@@ -1,23 +1,113 @@
 // Package ilda implements ILDA Image Data Transfer Format
 package ilda
 
-import "image/color"
-
-// Magic identifying an ILDA format header
-const Magic = "ILDA"
-
-const (
-	FormatCode0 = 0 // 3D Coordinates with Indexed Color
-	FormatCode1 = 1 // 2D Coordinates with Indexed Color
-	FormatCode2 = 2 // Color Palette
-	FormatCode4 = 4 // 3D Coordinates with True Color
-	FormatCode5 = 5 // 2D Coordinates with True Color
+import (
+	"bytes"
+	"encoding/binary"
+	"errors"
+	"image/color"
+	"io"
 )
 
-var Palette = DefaultPalette
+const (
+	formatCode0 = 0 // 3D Coordinates with Indexed Color
+	formatCode1 = 1 // 2D Coordinates with Indexed Color
+	formatCode2 = 2 // Color Palette
+	formatCode4 = 4 // 3D Coordinates with True Color
+	formatCode5 = 5 // 2D Coordinates with True Color
+)
+
+// magic identifying an ILDA format header
+var magic = [4]byte{'I', 'L', 'D', 'A'}
+
+var (
+	Palette = DefaultPalette
+	Off     = color.Black
+)
 
 type ILDA struct {
 	Frames []Frame
+}
+
+var (
+	ErrMagic  = errors.New("bad magic")
+	ErrFormat = errors.New("invalid format")
+)
+
+func read(r io.Reader, v interface{}) error {
+	return binary.Read(r, binary.BigEndian, v)
+}
+
+func readHeader(r io.Reader) (Header, error) {
+	var h Header
+	if err := read(r, &h); err != nil {
+		return Header{}, err
+	}
+	if h.Magic != magic {
+		return Header{}, ErrMagic
+	}
+	return h, nil
+}
+
+func readData(r io.Reader, code uint8) (Data, error) {
+	switch code {
+	case formatCode0:
+		var d Format0
+		if err := read(r, &d); err != nil {
+			return nil, err
+		}
+		return d, nil
+	case formatCode1:
+		var d Format1
+		if err := read(r, &d); err != nil {
+			return nil, err
+		}
+		return d, nil
+	case formatCode2:
+		var d Format2
+		if err := read(r, &d); err != nil {
+			return nil, err
+		}
+		return d, nil
+	case formatCode4:
+		var d Format4
+		if err := read(r, &d); err != nil {
+			return nil, err
+		}
+		return d, nil
+	case formatCode5:
+		var d Format5
+		if err := read(r, &d); err != nil {
+			return nil, err
+		}
+		return d, nil
+	default:
+		return nil, ErrFormat
+	}
+}
+
+func Read(r io.Reader) (ILDA, error) {
+	var l ILDA
+	for {
+		var f Frame
+		h, err := readHeader(r)
+		if err != nil {
+			return ILDA{}, err
+		}
+		if h.RecordsNumber == 0 {
+			break
+		}
+		f.Header = h
+		for i := 0; i < int(h.RecordsNumber); i++ {
+			d, err := readData(r, h.FormatCode)
+			if err != nil {
+				return ILDA{}, err
+			}
+			f.Data = append(f.Data, d)
+		}
+		l.Frames = append(l.Frames, f)
+	}
+	return l, nil
 }
 
 type Data interface {
@@ -43,6 +133,22 @@ type Header struct {
 	_               uint8    // Reserved
 }
 
+func trimZero(b []byte) string {
+	n := bytes.IndexByte(b, 0)
+	if n < 0 {
+		n = len(b)
+	}
+	return string(b[:n])
+}
+
+func (h Header) Name() string {
+	return trimZero(h.FrameName[:])
+}
+
+func (h Header) Company() string {
+	return trimZero(h.CompanyName[:])
+}
+
 // Status Codes
 const (
 	LastPoint = 1 << 7
@@ -62,7 +168,7 @@ func (f Format0) Point() (x, y, z int) {
 
 func (f Format0) Color() color.Color {
 	if f.StatusCode&Blanking != 0 {
-		return color.Black
+		return Off
 	}
 	return Palette[int(f.ColorIndex)]
 }
@@ -80,7 +186,7 @@ func (f Format1) Point() (x, y, z int) {
 
 func (f Format1) Color() color.Color {
 	if f.StatusCode&Blanking != 0 {
-		return color.Black
+		return Off
 	}
 	return Palette[int(f.ColorIndex)]
 }
@@ -111,7 +217,7 @@ func (f Format4) Point() (x, y, z int) {
 
 func (f Format4) Color() color.Color {
 	if f.StatusCode&Blanking != 0 {
-		return color.Black
+		return Off
 	}
 	return color.RGBA{f.R, f.G, f.B, 255}
 }
@@ -129,7 +235,7 @@ func (f Format5) Point() (x, y, z int) {
 
 func (f Format5) Color() color.Color {
 	if f.StatusCode&Blanking != 0 {
-		return color.Black
+		return Off
 	}
 	return color.RGBA{f.R, f.G, f.B, 255}
 }
