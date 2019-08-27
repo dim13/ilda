@@ -10,11 +10,11 @@ import (
 )
 
 const (
-	formatCode0 = 0 // 3D Coordinates with Indexed Color
-	formatCode1 = 1 // 2D Coordinates with Indexed Color
-	formatCode2 = 2 // Color Palette
-	formatCode4 = 4 // 3D Coordinates with True Color
-	formatCode5 = 5 // 2D Coordinates with True Color
+	format0 = 0 // 3D Coordinates with Indexed Color
+	format1 = 1 // 2D Coordinates with Indexed Color
+	format2 = 2 // Color Palette
+	format4 = 4 // 3D Coordinates with True Color
+	format5 = 5 // 2D Coordinates with True Color
 )
 
 // magic identifying an ILDA format header
@@ -51,31 +51,31 @@ func readHeader(r io.Reader) (Header, error) {
 
 func readData(r io.Reader, code uint8) (Data, error) {
 	switch code {
-	case formatCode0:
+	case format0:
 		var d Format0
 		if err := read(r, &d); err != nil {
 			return nil, err
 		}
 		return d, nil
-	case formatCode1:
+	case format1:
 		var d Format1
 		if err := read(r, &d); err != nil {
 			return nil, err
 		}
 		return d, nil
-	case formatCode2:
+	case format2:
 		var d Format2
 		if err := read(r, &d); err != nil {
 			return nil, err
 		}
 		return d, nil
-	case formatCode4:
+	case format4:
 		var d Format4
 		if err := read(r, &d); err != nil {
 			return nil, err
 		}
 		return d, nil
-	case formatCode5:
+	case format5:
 		var d Format5
 		if err := read(r, &d); err != nil {
 			return nil, err
@@ -113,6 +113,7 @@ func Read(r io.Reader) (ILDA, error) {
 type Data interface {
 	Point() (x, y, z int)
 	Color() color.Color
+	Flag(int) bool
 }
 
 type Frame struct {
@@ -162,16 +163,9 @@ type Format0 struct {
 	ColorIndex uint8
 }
 
-func (f Format0) Point() (x, y, z int) {
-	return int(f.X), int(f.Y), int(f.Z)
-}
-
-func (f Format0) Color() color.Color {
-	if f.StatusCode&Blanking != 0 {
-		return Off
-	}
-	return Palette[int(f.ColorIndex)]
-}
+func (f Format0) Point() (x, y, z int) { return int(f.X), int(f.Y), int(f.Z) }
+func (f Format0) Color() color.Color   { return Palette[int(f.ColorIndex)] }
+func (f Format0) Flag(v int) bool      { return f.StatusCode&uint8(v) != 0 }
 
 // Format1 – 2D Coordinates with Indexed Color
 type Format1 struct {
@@ -180,29 +174,18 @@ type Format1 struct {
 	ColorIndex uint8
 }
 
-func (f Format1) Point() (x, y, z int) {
-	return int(f.X), int(f.Y), 0
-}
-
-func (f Format1) Color() color.Color {
-	if f.StatusCode&Blanking != 0 {
-		return Off
-	}
-	return Palette[int(f.ColorIndex)]
-}
+func (f Format1) Point() (x, y, z int) { return int(f.X), int(f.Y), 0 }
+func (f Format1) Color() color.Color   { return Palette[int(f.ColorIndex)] }
+func (f Format1) Flag(v int) bool      { return f.StatusCode&uint8(v) != 0 }
 
 // Format2 – Color Palette
 type Format2 struct {
 	R, G, B uint8
 }
 
-func (f Format2) Point() (x, y, z int) {
-	return 0, 0, 0
-}
-
-func (f Format2) Color() color.Color {
-	return color.RGBA{f.R, f.G, f.B, 255}
-}
+func (f Format2) Point() (x, y, z int) { return 0, 0, 0 }
+func (f Format2) Color() color.Color   { return color.RGBA{f.R, f.G, f.B, 255} }
+func (f Format2) Flag(v int) bool      { return false }
 
 // Format4 – 3D Coordinates with True Color
 type Format4 struct {
@@ -211,16 +194,9 @@ type Format4 struct {
 	B, G, R    uint8
 }
 
-func (f Format4) Point() (x, y, z int) {
-	return int(f.X), int(f.Y), int(f.Z)
-}
-
-func (f Format4) Color() color.Color {
-	if f.StatusCode&Blanking != 0 {
-		return Off
-	}
-	return color.RGBA{f.R, f.G, f.B, 255}
-}
+func (f Format4) Point() (x, y, z int) { return int(f.X), int(f.Y), int(f.Z) }
+func (f Format4) Color() color.Color   { return color.RGBA{f.R, f.G, f.B, 255} }
+func (f Format4) Flag(v int) bool      { return f.StatusCode&uint8(v) != 0 }
 
 // Format5 – 2D Coordinates with True Color
 type Format5 struct {
@@ -229,13 +205,6 @@ type Format5 struct {
 	B, G, R    uint8
 }
 
-func (f Format5) Point() (x, y, z int) {
-	return int(f.X), int(f.Y), 0
-}
-
-func (f Format5) Color() color.Color {
-	if f.StatusCode&Blanking != 0 {
-		return Off
-	}
-	return color.RGBA{f.R, f.G, f.B, 255}
-}
+func (f Format5) Point() (x, y, z int) { return int(f.X), int(f.Y), 0 }
+func (f Format5) Color() color.Color   { return color.RGBA{f.R, f.G, f.B, 255} }
+func (f Format5) Flag(v int) bool      { return f.StatusCode&uint8(v) != 0 }
