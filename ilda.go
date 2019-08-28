@@ -118,6 +118,14 @@ const (
 	Blanking  Flags = 1 << 6
 )
 
+// Coordinate Data
+//
+//  X: Extreme left: -32768, extreme right: +32767
+//  Y: Extreme bottom: -32768, extreme top: +32767
+//  Z: Extreme rear: -32768, extreme front: +32767
+//  rear: away from viewer, behind screen
+//  front: towards viewer, in front of screen
+//
 type Data interface {
 	Point() (x, y, z int)
 	Color() color.Color
@@ -131,7 +139,7 @@ type Frame struct {
 
 type Header struct {
 	Magic           [4]byte  // "ILDA"
-	_               [3]uint8 // Reserved
+	_               [3]uint8 // Reserved, all zero
 	FormatCode      uint8    // Format Code
 	FrameName       [8]byte  // Frame of Color Palette Name
 	CompanyName     [8]byte  // Company Name
@@ -139,7 +147,7 @@ type Header struct {
 	FrameNumber     uint16   // Frame or Color Palette Number
 	TotalFrames     uint16   // Total Frames in Sequence or 0
 	ProjectorNumber uint8    // Projector Number
-	_               uint8    // Reserved
+	_               uint8    // Reserved for future, zero
 }
 
 func trimZero(b []byte) string {
