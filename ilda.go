@@ -10,23 +10,19 @@ import (
 )
 
 const (
-	format0 = 0 // 3D Coordinates with Indexed Color
-	format1 = 1 // 2D Coordinates with Indexed Color
-	format2 = 2 // Color Palette
-	format4 = 4 // 3D Coordinates with True Color
-	format5 = 5 // 2D Coordinates with True Color
+	indexedColor3D = 0 // 3D Coordinates with Indexed Color
+	indexedColor2D = 1 // 2D Coordinates with Indexed Color
+	colorPalette   = 2 // Color Palette
+	trueColor3D    = 4 // 3D Coordinates with True Color
+	trueColor2D    = 5 // 2D Coordinates with True Color
 )
 
 // magic identifying an ILDA format header
 var magic = [4]byte{'I', 'L', 'D', 'A'}
 
-var (
-	Palette = DefaultPalette
-	Off     = color.Black
-)
-
 type ILDA struct {
-	Frames []Frame
+	Frames  []Frame
+	Palette color.Palette
 }
 
 var (
@@ -51,32 +47,32 @@ func readHeader(r io.Reader) (Header, error) {
 
 func readData(r io.Reader, code uint8) (Data, error) {
 	switch code {
-	case format0:
-		var d Format0
+	case indexedColor3D:
+		var d IndexedColor3D
 		if err := read(r, &d); err != nil {
 			return nil, err
 		}
 		return d, nil
-	case format1:
-		var d Format1
+	case indexedColor2D:
+		var d IndexedColor2D
 		if err := read(r, &d); err != nil {
 			return nil, err
 		}
 		return d, nil
-	case format2:
-		var d Format2
+	case colorPalette:
+		var d ColorPalette
 		if err := read(r, &d); err != nil {
 			return nil, err
 		}
 		return d, nil
-	case format4:
-		var d Format4
+	case trueColor3D:
+		var d TrueColor3D
 		if err := read(r, &d); err != nil {
 			return nil, err
 		}
 		return d, nil
-	case format5:
-		var d Format5
+	case trueColor2D:
+		var d TrueColor2D
 		if err := read(r, &d); err != nil {
 			return nil, err
 		}
@@ -88,6 +84,7 @@ func readData(r io.Reader, code uint8) (Data, error) {
 
 func Read(r io.Reader) (ILDA, error) {
 	var l ILDA
+	l.Palette = DefaultPalette
 	for {
 		var f Frame
 		h, err := readHeader(r)
@@ -105,7 +102,13 @@ func Read(r io.Reader) (ILDA, error) {
 			}
 			f.Data = append(f.Data, d)
 		}
-		l.Frames = append(l.Frames, f)
+		if h.FormatCode == colorPalette {
+			for _, d := range f.Data {
+				l.Palette = append(l.Palette, d.Color(nil))
+			}
+		} else {
+			l.Frames = append(l.Frames, f)
+		}
 	}
 	return l, nil
 }
@@ -128,8 +131,8 @@ const (
 //
 type Data interface {
 	Point() (x, y, z int)
-	Color() color.Color
-	Flag(Flags) bool
+	Color(color.Palette) color.Color
+	Status(Flags) bool
 }
 
 type Frame struct {
@@ -166,55 +169,55 @@ func (h Header) Company() string {
 	return trimZero(h.CompanyName[:])
 }
 
-// Format0 – 3D Coordinates with Indexed Color
-type Format0 struct {
+// IndexedColor3D – 3D Coordinates with Indexed Color
+type IndexedColor3D struct {
 	X, Y, Z    int16
 	StatusCode uint8
 	ColorIndex uint8
 }
 
-func (f Format0) Point() (x, y, z int) { return int(f.X), int(f.Y), int(f.Z) }
-func (f Format0) Color() color.Color   { return Palette[int(f.ColorIndex)] }
-func (f Format0) Flag(v Flags) bool    { return f.StatusCode&uint8(v) != 0 }
+func (f IndexedColor3D) Point() (x, y, z int)              { return int(f.X), int(f.Y), int(f.Z) }
+func (f IndexedColor3D) Color(p color.Palette) color.Color { return p[int(f.ColorIndex)] }
+func (f IndexedColor3D) Status(v Flags) bool               { return f.StatusCode&uint8(v) != 0 }
 
-// Format1 – 2D Coordinates with Indexed Color
-type Format1 struct {
+// IndexedColor2D – 2D Coordinates with Indexed Color
+type IndexedColor2D struct {
 	X, Y       int16
 	StatusCode uint8
 	ColorIndex uint8
 }
 
-func (f Format1) Point() (x, y, z int) { return int(f.X), int(f.Y), 0 }
-func (f Format1) Color() color.Color   { return Palette[int(f.ColorIndex)] }
-func (f Format1) Flag(v Flags) bool    { return f.StatusCode&uint8(v) != 0 }
+func (f IndexedColor2D) Point() (x, y, z int)              { return int(f.X), int(f.Y), 0 }
+func (f IndexedColor2D) Color(p color.Palette) color.Color { return p[int(f.ColorIndex)] }
+func (f IndexedColor2D) Status(v Flags) bool               { return f.StatusCode&uint8(v) != 0 }
 
-// Format2 – Color Palette
-type Format2 struct {
+// ColorPalette – Color Palette
+type ColorPalette struct {
 	R, G, B uint8
 }
 
-func (f Format2) Point() (x, y, z int) { return 0, 0, 0 }
-func (f Format2) Color() color.Color   { return color.RGBA{f.R, f.G, f.B, 255} }
-func (f Format2) Flag(v Flags) bool    { return false }
+func (f ColorPalette) Point() (x, y, z int)            { return 0, 0, 0 }
+func (f ColorPalette) Color(color.Palette) color.Color { return color.RGBA{f.R, f.G, f.B, 255} }
+func (f ColorPalette) Status(v Flags) bool             { return false }
 
-// Format4 – 3D Coordinates with True Color
-type Format4 struct {
+// TrueColor3D – 3D Coordinates with True Color
+type TrueColor3D struct {
 	X, Y, Z    int16
 	StatusCode uint8
 	B, G, R    uint8
 }
 
-func (f Format4) Point() (x, y, z int) { return int(f.X), int(f.Y), int(f.Z) }
-func (f Format4) Color() color.Color   { return color.RGBA{f.R, f.G, f.B, 255} }
-func (f Format4) Flag(v Flags) bool    { return f.StatusCode&uint8(v) != 0 }
+func (f TrueColor3D) Point() (x, y, z int)            { return int(f.X), int(f.Y), int(f.Z) }
+func (f TrueColor3D) Color(color.Palette) color.Color { return color.RGBA{f.R, f.G, f.B, 255} }
+func (f TrueColor3D) Status(v Flags) bool             { return f.StatusCode&uint8(v) != 0 }
 
-// Format5 – 2D Coordinates with True Color
-type Format5 struct {
+// TrueColor2D – 2D Coordinates with True Color
+type TrueColor2D struct {
 	X, Y       int16
 	StatusCode uint8
 	B, G, R    uint8
 }
 
-func (f Format5) Point() (x, y, z int) { return int(f.X), int(f.Y), 0 }
-func (f Format5) Color() color.Color   { return color.RGBA{f.R, f.G, f.B, 255} }
-func (f Format5) Flag(v Flags) bool    { return f.StatusCode&uint8(v) != 0 }
+func (f TrueColor2D) Point() (x, y, z int)            { return int(f.X), int(f.Y), 0 }
+func (f TrueColor2D) Color(color.Palette) color.Color { return color.RGBA{f.R, f.G, f.B, 255} }
+func (f TrueColor2D) Status(v Flags) bool             { return f.StatusCode&uint8(v) != 0 }
