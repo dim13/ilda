@@ -110,10 +110,18 @@ func Read(r io.Reader) (ILDA, error) {
 	return l, nil
 }
 
+type Flags uint8
+
+// Status Codes
+const (
+	LastPoint Flags = 1 << 7
+	Blanking  Flags = 1 << 6
+)
+
 type Data interface {
 	Point() (x, y, z int)
 	Color() color.Color
-	Flag(int) bool
+	Flag(Flags) bool
 }
 
 type Frame struct {
@@ -150,12 +158,6 @@ func (h Header) Company() string {
 	return trimZero(h.CompanyName[:])
 }
 
-// Status Codes
-const (
-	LastPoint = 1 << 7
-	Blanking  = 1 << 6
-)
-
 // Format0 – 3D Coordinates with Indexed Color
 type Format0 struct {
 	X, Y, Z    int16
@@ -165,7 +167,7 @@ type Format0 struct {
 
 func (f Format0) Point() (x, y, z int) { return int(f.X), int(f.Y), int(f.Z) }
 func (f Format0) Color() color.Color   { return Palette[int(f.ColorIndex)] }
-func (f Format0) Flag(v int) bool      { return f.StatusCode&uint8(v) != 0 }
+func (f Format0) Flag(v Flags) bool    { return f.StatusCode&uint8(v) != 0 }
 
 // Format1 – 2D Coordinates with Indexed Color
 type Format1 struct {
@@ -176,7 +178,7 @@ type Format1 struct {
 
 func (f Format1) Point() (x, y, z int) { return int(f.X), int(f.Y), 0 }
 func (f Format1) Color() color.Color   { return Palette[int(f.ColorIndex)] }
-func (f Format1) Flag(v int) bool      { return f.StatusCode&uint8(v) != 0 }
+func (f Format1) Flag(v Flags) bool    { return f.StatusCode&uint8(v) != 0 }
 
 // Format2 – Color Palette
 type Format2 struct {
@@ -185,7 +187,7 @@ type Format2 struct {
 
 func (f Format2) Point() (x, y, z int) { return 0, 0, 0 }
 func (f Format2) Color() color.Color   { return color.RGBA{f.R, f.G, f.B, 255} }
-func (f Format2) Flag(v int) bool      { return false }
+func (f Format2) Flag(v Flags) bool    { return false }
 
 // Format4 – 3D Coordinates with True Color
 type Format4 struct {
@@ -196,7 +198,7 @@ type Format4 struct {
 
 func (f Format4) Point() (x, y, z int) { return int(f.X), int(f.Y), int(f.Z) }
 func (f Format4) Color() color.Color   { return color.RGBA{f.R, f.G, f.B, 255} }
-func (f Format4) Flag(v int) bool      { return f.StatusCode&uint8(v) != 0 }
+func (f Format4) Flag(v Flags) bool    { return f.StatusCode&uint8(v) != 0 }
 
 // Format5 – 2D Coordinates with True Color
 type Format5 struct {
@@ -207,4 +209,4 @@ type Format5 struct {
 
 func (f Format5) Point() (x, y, z int) { return int(f.X), int(f.Y), 0 }
 func (f Format5) Color() color.Color   { return color.RGBA{f.R, f.G, f.B, 255} }
-func (f Format5) Flag(v int) bool      { return f.StatusCode&uint8(v) != 0 }
+func (f Format5) Flag(v Flags) bool    { return f.StatusCode&uint8(v) != 0 }

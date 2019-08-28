@@ -21,7 +21,8 @@ func TestRead(t *testing.T) {
 		for _, d := range f.Data {
 			x, y, z := d.Point()
 			c := d.Color()
-			t.Log("data", x, y, z, c)
+			b := d.Flag(Blanking)
+			t.Log("data", x, y, z, c, b)
 		}
 	}
 }
