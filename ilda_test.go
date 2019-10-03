@@ -19,10 +19,11 @@ func TestRead(t *testing.T) {
 		h := f.Header
 		t.Log("frame", h, h.Name(), h.Company())
 		for _, d := range f.Data {
-			x, y, z := d.Point()
+			pt := d.Point()
+			dp := d.Depth()
 			c := d.Color(l.Palette)
 			b := d.Status(Blanking)
-			t.Log("data", x, y, z, c, b)
+			t.Log("data", pt, dp, c, b)
 		}
 	}
 }

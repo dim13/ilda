@@ -5,16 +5,18 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"image"
 	"image/color"
 	"io"
 )
 
 const (
-	indexedColor3D = 0 // 3D Coordinates with Indexed Color
-	indexedColor2D = 1 // 2D Coordinates with Indexed Color
-	colorPalette   = 2 // Color Palette
-	trueColor3D    = 4 // 3D Coordinates with True Color
-	trueColor2D    = 5 // 2D Coordinates with True Color
+	indexedColor3D = iota // 3D Coordinates with Indexed Color
+	indexedColor2D        // 2D Coordinates with Indexed Color
+	colorPalette          // Color Palette
+	_                     // not used
+	trueColor3D           // 3D Coordinates with True Color
+	trueColor2D           // 2D Coordinates with True Color
 )
 
 // magic identifying an ILDA format header
@@ -130,7 +132,8 @@ const (
 //  front: towards viewer, in front of screen
 //
 type Data interface {
-	Point() (x, y, z int)
+	Point() image.Point
+	Depth() int
 	Color(color.Palette) color.Color
 	Status(Flags) bool
 }
@@ -176,7 +179,8 @@ type IndexedColor3D struct {
 	ColorIndex uint8
 }
 
-func (f IndexedColor3D) Point() (x, y, z int)              { return int(f.X), int(f.Y), int(f.Z) }
+func (f IndexedColor3D) Point() image.Point                { return image.Pt(int(f.X), int(f.Y)) }
+func (f IndexedColor3D) Depth() int                        { return int(f.Z) }
 func (f IndexedColor3D) Color(p color.Palette) color.Color { return p[int(f.ColorIndex)] }
 func (f IndexedColor3D) Status(v Flags) bool               { return f.StatusCode&uint8(v) != 0 }
 
@@ -187,7 +191,8 @@ type IndexedColor2D struct {
 	ColorIndex uint8
 }
 
-func (f IndexedColor2D) Point() (x, y, z int)              { return int(f.X), int(f.Y), 0 }
+func (f IndexedColor2D) Point() image.Point                { return image.Pt(int(f.X), int(f.Y)) }
+func (f IndexedColor2D) Depth() int                        { return 0 }
 func (f IndexedColor2D) Color(p color.Palette) color.Color { return p[int(f.ColorIndex)] }
 func (f IndexedColor2D) Status(v Flags) bool               { return f.StatusCode&uint8(v) != 0 }
 
@@ -196,7 +201,8 @@ type ColorPalette struct {
 	R, G, B uint8
 }
 
-func (f ColorPalette) Point() (x, y, z int)            { return 0, 0, 0 }
+func (f ColorPalette) Point() image.Point              { return image.Pt(0, 0) }
+func (f ColorPalette) Depth() int                      { return 0 }
 func (f ColorPalette) Color(color.Palette) color.Color { return color.RGBA{f.R, f.G, f.B, 255} }
 func (f ColorPalette) Status(v Flags) bool             { return false }
 
@@ -207,7 +213,8 @@ type TrueColor3D struct {
 	B, G, R    uint8
 }
 
-func (f TrueColor3D) Point() (x, y, z int)            { return int(f.X), int(f.Y), int(f.Z) }
+func (f TrueColor3D) Point() image.Point              { return image.Pt(int(f.X), int(f.Y)) }
+func (f TrueColor3D) Depth() int                      { return int(f.Z) }
 func (f TrueColor3D) Color(color.Palette) color.Color { return color.RGBA{f.R, f.G, f.B, 255} }
 func (f TrueColor3D) Status(v Flags) bool             { return f.StatusCode&uint8(v) != 0 }
 
@@ -218,6 +225,7 @@ type TrueColor2D struct {
 	B, G, R    uint8
 }
 
-func (f TrueColor2D) Point() (x, y, z int)            { return int(f.X), int(f.Y), 0 }
+func (f TrueColor2D) Point() image.Point              { return image.Pt(int(f.X), int(f.Y)) }
+func (f TrueColor2D) Depth() int                      { return 0 }
 func (f TrueColor2D) Color(color.Palette) color.Color { return color.RGBA{f.R, f.G, f.B, 255} }
 func (f TrueColor2D) Status(v Flags) bool             { return f.StatusCode&uint8(v) != 0 }
