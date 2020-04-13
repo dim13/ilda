@@ -6,24 +6,32 @@ import (
 )
 
 func TestRead(t *testing.T) {
-	f, err := os.Open("testdata/ildatest.ild")
-	if err != nil {
-		t.Fatal(err)
+	testCases := []string{
+		"testdata/ildatest.ild",
+		"testdata/ildatstb.ild",
+		"testdata/30k.ild",
+		"testdata/barney.ild",
+		"testdata/biker.ild",
+		//"testdata/theriddle.ild",
 	}
-	defer f.Close()
-	l, err := Read(f)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, f := range l.Frames {
-		h := f.Header
-		t.Log("frame", h, h.Name(), h.Company())
-		for _, d := range f.Data {
-			pt := d.Point()
-			dp := d.Depth()
-			c := d.Color(l.Palette)
-			b := d.Status(Blanking)
-			t.Log("data", pt, dp, c, b)
-		}
+	for _, tc := range testCases {
+		t.Run(tc, func(t *testing.T) {
+			f, err := os.Open(tc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
+			d := New(f)
+			for d.Next() {
+				frame := d.Frame()
+				t.Log("Frame", frame.Name, frame.Company, frame.Number, frame.Total)
+				for _, point := range frame.Points {
+					t.Log("Point", point)
+				}
+			}
+			if err := d.Err(); err != nil {
+				t.Error("Err", d.Err())
+			}
+		})
 	}
 }
