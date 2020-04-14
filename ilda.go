@@ -56,7 +56,7 @@ func (d *Decoder) Frame() Frame {
 	if d.err != nil {
 		return Frame{}
 	}
-	hdr, err := readFrameHeader(d.r)
+	hdr, err := d.readFrameHeader()
 	if err != nil {
 		d.err = err
 		return Frame{}
@@ -68,32 +68,43 @@ func (d *Decoder) Frame() Frame {
 		Total:     int(hdr.TotalFrames),
 		Projector: int(hdr.ProjectorNumber),
 	}
-	d.last = frame.Number == frame.Total-1
+	d.last = frame.Number >= frame.Total-1
 	switch hdr.FormatCode {
 	case formatIndexedColor3D:
-		frame.Points, err = readIndexedColor3D(d.r, int(hdr.RecordsNumber), d.pal)
+		frame.Points, err = d.readIndexedColor3D(hdr.RecordsNumber)
 	case formatIndexedColor2D:
-		frame.Points, err = readIndexedColor2D(d.r, int(hdr.RecordsNumber), d.pal)
+		frame.Points, err = d.readIndexedColor2D(hdr.RecordsNumber)
 	case formatColorPalette:
-		d.pal, err = readPaletteColor(d.r, int(hdr.RecordsNumber))
+		d.pal, err = d.readPaletteColor(hdr.RecordsNumber)
 	case formatTrueColor3D:
-		frame.Points, err = readTrueColor3D(d.r, int(hdr.RecordsNumber))
+		frame.Points, err = d.readTrueColor3D(hdr.RecordsNumber)
 	case formatTrueColor2D:
-		frame.Points, err = readTrueColor2D(d.r, int(hdr.RecordsNumber))
+		frame.Points, err = d.readTrueColor2D(hdr.RecordsNumber)
+	default:
+		err = ErrFormat
 	}
 	if err != nil {
 		d.err = err
 		return Frame{}
 	}
+	// read next frame after palette change
 	if hdr.FormatCode == formatColorPalette {
 		return d.Frame()
 	}
 	return frame
 }
 
-func readFrameHeader(r io.Reader) (frameHeader, error) {
+func trimZero(b []byte) string {
+	n := bytes.IndexByte(b, 0)
+	if n < 0 {
+		n = len(b)
+	}
+	return string(b[:n])
+}
+
+func (d *Decoder) readFrameHeader() (frameHeader, error) {
 	var hdr frameHeader
-	if err := binary.Read(r, binary.BigEndian, &hdr); err != nil {
+	if err := binary.Read(d.r, binary.BigEndian, &hdr); err != nil {
 		return frameHeader{}, err
 	}
 	if hdr.Magic != magic {
@@ -102,108 +113,62 @@ func readFrameHeader(r io.Reader) (frameHeader, error) {
 	return hdr, nil
 }
 
-func readIndexedColor3D(r io.Reader, n int, pal color.Palette) ([]Point, error) {
-	data := make([]indexedColor3D, n)
-	if err := binary.Read(r, binary.BigEndian, &data); err != nil {
+func (d *Decoder) readIndexedColor3D(n uint16) ([]Point, error) {
+	frame := make([]indexedColor3D, n)
+	if err := binary.Read(d.r, binary.BigEndian, &frame); err != nil {
 		return nil, err
 	}
-	var points []Point
-	for _, v := range data {
-		c := pal[v.ColorIndex]
-		if v.StatusCode&statusBlanking != 0 {
-			c = color.Transparent
-		}
-		points = append(points, Point{
-			X:     int(v.X),
-			Y:     int(v.Y),
-			Z:     int(v.Z),
-			Color: c,
-		})
-		if v.StatusCode&statusLastPoint != 0 {
-			break
-		}
+	points := make([]Point, n)
+	for i, v := range frame {
+		points[i] = Point{int(v.X), int(v.Y), int(v.Z), v.Color(d.pal)}
 	}
 	return points, nil
 }
 
-func readIndexedColor2D(r io.Reader, n int, pal color.Palette) ([]Point, error) {
-	data := make([]indexedColor2D, n)
-	if err := binary.Read(r, binary.BigEndian, &data); err != nil {
+func (d *Decoder) readIndexedColor2D(n uint16) ([]Point, error) {
+	frame := make([]indexedColor2D, n)
+	if err := binary.Read(d.r, binary.BigEndian, &frame); err != nil {
 		return nil, err
 	}
-	var points []Point
-	for _, v := range data {
-		c := pal[v.ColorIndex]
-		if v.StatusCode&statusBlanking != 0 {
-			c = color.Transparent
-		}
-		points = append(points, Point{
-			X:     int(v.X),
-			Y:     int(v.Y),
-			Color: c,
-		})
-		if v.StatusCode&statusLastPoint != 0 {
-			break
-		}
+	points := make([]Point, n)
+	for i, v := range frame {
+		points[i] = Point{int(v.X), int(v.Y), 0, v.Color(d.pal)}
 	}
 	return points, nil
 }
 
-func readPaletteColor(r io.Reader, n int) (color.Palette, error) {
-	data := make([]paletteColor, n)
-	if err := binary.Read(r, binary.BigEndian, &data); err != nil {
+func (d *Decoder) readPaletteColor(n uint16) (color.Palette, error) {
+	frame := make([]paletteColor, n)
+	if err := binary.Read(d.r, binary.BigEndian, &frame); err != nil {
 		return nil, err
 	}
-	var palette color.Palette
-	for _, v := range data {
-		palette = append(palette, v.Color())
+	palette := make([]color.Color, n)
+	for i, v := range frame {
+		palette[i] = v.Color()
 	}
 	return palette, nil
 }
 
-func readTrueColor3D(r io.Reader, n int) ([]Point, error) {
-	data := make([]trueColor3D, n)
-	if err := binary.Read(r, binary.BigEndian, &data); err != nil {
+func (d *Decoder) readTrueColor3D(n uint16) ([]Point, error) {
+	frame := make([]trueColor3D, n)
+	if err := binary.Read(d.r, binary.BigEndian, &frame); err != nil {
 		return nil, err
 	}
-	var points []Point
-	for _, v := range data {
-		c := v.Color()
-		if v.StatusCode&statusBlanking != 0 {
-			c = color.Transparent
-		}
-		points = append(points, Point{
-			X:     int(v.X),
-			Y:     int(v.Y),
-			Z:     int(v.Z),
-			Color: c,
-		})
-		if v.StatusCode&statusLastPoint != 0 {
-			break
-		}
+	points := make([]Point, n)
+	for i, v := range frame {
+		points[i] = Point{int(v.X), int(v.Y), int(v.Z), v.Color()}
 	}
 	return points, nil
 }
 
-func readTrueColor2D(r io.Reader, n int) ([]Point, error) {
-	data := make([]trueColor2D, n)
-	if err := binary.Read(r, binary.BigEndian, &data); err != nil {
+func (d *Decoder) readTrueColor2D(n uint16) ([]Point, error) {
+	frame := make([]trueColor2D, n)
+	if err := binary.Read(d.r, binary.BigEndian, &frame); err != nil {
 		return nil, err
 	}
-	var points []Point
-	for _, v := range data {
-		c := v.Color()
-		if v.StatusCode&statusBlanking != 0 {
-			c = color.Transparent
-		}
-		points = append(points, Point{
-			X:     int(v.X),
-			Y:     int(v.Y),
-			Color: c,
-		})
-		if v.StatusCode&statusLastPoint != 0 {
-			break
-		}
+	points := make([]Point, n)
+	for i, v := range frame {
+		points[i] = Point{int(v.X), int(v.Y), 0, v.Color()}
 	}
 	return points, nil
 }
@@ -253,11 +218,25 @@ type indexedColor3D struct {
 	ColorIndex uint8
 }
 
+func (v indexedColor3D) Color(pal color.Palette) color.Color {
+	if v.StatusCode&statusBlanking != 0 {
+		return color.Transparent
+	}
+	return pal[v.ColorIndex]
+}
+
 // indexedColor2D – 2D Coordinates with Indexed Color
 type indexedColor2D struct {
 	X, Y       int16
 	StatusCode uint8
 	ColorIndex uint8
+}
+
+func (v indexedColor2D) Color(pal color.Palette) color.Color {
+	if v.StatusCode&statusBlanking != 0 {
+		return color.Transparent
+	}
+	return pal[v.ColorIndex]
 }
 
 // paletteColor – Color Palette
@@ -266,7 +245,7 @@ type paletteColor struct {
 }
 
 func (v paletteColor) Color() color.Color {
-	return color.RGBA{R: v.R, G: v.G, B: v.B, A: 0xff}
+	return color.RGBA{v.R, v.G, v.B, 0xff}
 }
 
 // trueColor3D – 3D Coordinates with True Color
@@ -277,7 +256,10 @@ type trueColor3D struct {
 }
 
 func (v trueColor3D) Color() color.Color {
-	return color.RGBA{R: v.R, G: v.G, B: v.B, A: 0xff}
+	if v.StatusCode&statusBlanking != 0 {
+		return color.Transparent
+	}
+	return color.RGBA{v.R, v.G, v.B, 0xff}
 }
 
 // trueColor2D – 2D Coordinates with True Color
@@ -288,13 +270,8 @@ type trueColor2D struct {
 }
 
 func (v trueColor2D) Color() color.Color {
-	return color.RGBA{R: v.R, G: v.G, B: v.B, A: 0xff}
-}
-
-func trimZero(b []byte) string {
-	n := bytes.IndexByte(b, 0)
-	if n < 0 {
-		n = len(b)
+	if v.StatusCode&statusBlanking != 0 {
+		return color.Transparent
 	}
-	return string(b[:n])
+	return color.RGBA{v.R, v.G, v.B, 0xff}
 }
