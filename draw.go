@@ -25,7 +25,7 @@ func (p Point) normalize(r image.Rectangle) image.Point {
 // rectangle r in dst with the result of drawing src on dst.
 func (f *Frame) Draw(dst draw.Image, r image.Rectangle, src image.Image, sp image.Point) {
 	// copy background
-	draw.Draw(dst, r, src, sp, draw.Over)
+	draw.Draw(dst, r, src, sp, draw.Src)
 	var plt plot
 	for _, pt := range f.Points {
 		p := pt.normalize(r)
