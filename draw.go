@@ -26,13 +26,11 @@ func (p Point) normalize(r image.Rectangle) image.Point {
 func (f *Frame) Draw(dst draw.Image, r image.Rectangle, src image.Image, sp image.Point) {
 	// copy background
 	draw.Draw(dst, r, src, sp, draw.Over)
-	img := image.NewRGBA(r)
 	var plt plot
 	for _, pt := range f.Points {
 		p := pt.normalize(r)
-		plt.drawTo(img, p.X, p.Y, pt.Color)
+		plt.drawTo(dst, p.X, p.Y, pt.Color)
 	}
-	draw.Draw(dst, r, img, sp, draw.Over)
 }
 
 type plot struct {

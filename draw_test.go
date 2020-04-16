@@ -21,13 +21,13 @@ func TestDraw(t *testing.T) {
 	}
 
 	bg := image.Image(image.NewUniform(color.Black))
-	dst := image.NewRGBA(image.Rect(0, 0, 1024, 1024))
+	dst := image.NewRGBA(image.Rect(0, 0, 640, 640))
 	for _, frame := range frames {
 		frame.Draw(dst, dst.Bounds(), bg, image.ZP)
 		bg = dst
 	}
 
-	out, err := os.Create("test.png")
+	out, err := os.Create("docs/test.png")
 	if err != nil {
 		t.Fatal(err)
 	}
