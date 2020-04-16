@@ -14,32 +14,29 @@ import (
 //  X: Extreme left: -32768, extreme right: +32767
 //  Y: Extreme bottom: -32768, extreme top: +32767
 func (p Point) normalize(r image.Rectangle) image.Point {
-	dx := 65535.0 / float64(r.Max.X-r.Min.X)
-	dy := 65535.0 / float64(r.Max.Y-r.Min.Y)
-	x := 32768.0 + float64(p.X)
-	y := 32767.0 - float64(p.Y)
+	dx := 65535 / float64(r.Max.X-r.Min.X)
+	dy := 65535 / float64(r.Max.Y-r.Min.Y)
+	x := 32768 + float64(p.X)
+	y := 32767 - float64(p.Y)
 	return image.Pt(int(x/dx), int(y/dy))
 }
 
 // Draw aligns r.Min in dst with sp in src and then replaces the
 // rectangle r in dst with the result of drawing src on dst.
 func (f *Frame) Draw(dst draw.Image, r image.Rectangle, src image.Image, sp image.Point) {
+	// copy background
+	draw.Draw(dst, r, src, sp, draw.Over)
 	img := image.NewRGBA(r)
 	var plt plot
 	for _, pt := range f.Points {
 		p := pt.normalize(r)
 		plt.drawTo(img, p.X, p.Y, pt.Color)
 	}
-	draw.Draw(dst, r, src, sp, draw.Over)
 	draw.Draw(dst, r, img, sp, draw.Over)
 }
 
 type plot struct {
 	x0, y0 int
-}
-
-func (m *plot) moveTo(x, y int) {
-	m.x0, m.y0 = x, y
 }
 
 func (m *plot) drawTo(dst draw.Image, x1, y1 int, c color.Color) {
@@ -61,7 +58,9 @@ func (m *plot) drawTo(dst draw.Image, x1, y1 int, c color.Color) {
 	}
 	err := dx + dy // error value e_xy
 	for {
-		dst.Set(m.x0, m.y0, c)
+		if c != color.Transparent {
+			dst.Set(m.x0, m.y0, c)
+		}
 		if m.x0 == x1 && m.y0 == y1 {
 			break
 		}
