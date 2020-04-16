@@ -52,6 +52,14 @@ func (d *Decoder) Err() error {
 	return d.err
 }
 
+func (d *Decoder) AllFrames() ([]Frame, error) {
+	var frames []Frame
+	for d.Next() {
+		frames = append(frames, d.Frame())
+	}
+	return frames, d.Err()
+}
+
 func (d *Decoder) Frame() Frame {
 	if d.err != nil {
 		return Frame{}
