@@ -28,48 +28,45 @@ func (f *Frame) Draw(dst draw.Image, r image.Rectangle, src image.Image, sp imag
 	draw.Draw(dst, r, src, sp, draw.Src)
 	var plt plot
 	for _, pt := range f.Points {
-		p := pt.normalize(r)
-		plt.drawTo(dst, p.X, p.Y, pt.Color)
+		plt.drawTo(dst, pt.normalize(r), pt.Color)
 	}
 }
 
-type plot struct {
-	x0, y0 int
-}
+type plot image.Point
 
-func (m *plot) drawTo(dst draw.Image, x1, y1 int, c color.Color) {
-	dx := x1 - m.x0
+func (m *plot) drawTo(dst draw.Image, p image.Point, c color.Color) {
+	dx := p.X - m.X
 	if dx < 0 {
 		dx = -dx
 	}
 	sx := -1
-	if m.x0 < x1 {
+	if m.X < p.X {
 		sx = 1
 	}
-	dy := m.y0 - y1
+	dy := m.Y - p.Y
 	if dy > 0 {
 		dy = -dy
 	}
 	sy := -1
-	if m.y0 < y1 {
+	if m.Y < p.Y {
 		sy = 1
 	}
 	err := dx + dy // error value e_xy
 	for {
 		if c != color.Transparent {
-			dst.Set(m.x0, m.y0, c)
+			dst.Set(m.X, m.Y, c)
 		}
-		if m.x0 == x1 && m.y0 == y1 {
+		if m.X == p.X && m.Y == p.Y {
 			break
 		}
 		e2 := 2 * err
 		if e2 >= dy { // e_xy + e_x > 0
 			err += dy
-			m.x0 += sx
+			m.X += sx
 		}
 		if e2 <= dx { // e_xy + e_y < 0
 			err += dx
-			m.y0 += sy
+			m.Y += sy
 		}
 	}
 }
