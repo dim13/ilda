@@ -30,7 +30,7 @@ var (
 	ErrFormat = errors.New("invalid format")
 )
 
-func New(r io.Reader) *Decoder {
+func NewDecoder(r io.Reader) *Decoder {
 	return &Decoder{r: r, pal: DefaultPalette}
 }
 

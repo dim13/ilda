@@ -15,7 +15,7 @@ func TestDraw(t *testing.T) {
 	}
 	defer ild.Close()
 
-	frames, err := New(ild).AllFrames()
+	frames, err := NewDecoder(ild).AllFrames()
 	if err != nil {
 		t.Fatal(err)
 	}

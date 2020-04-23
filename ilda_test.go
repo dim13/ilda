@@ -1,6 +1,7 @@
 package ilda
 
 import (
+	"log"
 	"os"
 	"testing"
 )
@@ -21,7 +22,7 @@ func TestRead(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer f.Close()
-			d := New(f)
+			d := NewDecoder(f)
 			for d.Next() {
 				frame := d.Frame()
 				t.Log("Frame", frame.Name, frame.Company, frame.Number, frame.Total)
@@ -33,5 +34,20 @@ func TestRead(t *testing.T) {
 				t.Error("Err", d.Err())
 			}
 		})
+	}
+}
+
+func ExampleDecoder() {
+	fd, err := os.Open("testdata/ildatest.ild")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer fd.Close()
+	d := NewDecoder(fd)
+	for d.Next() {
+		log.Println(d.Frame())
+	}
+	if err := d.Err(); err != nil {
+		log.Println(err)
 	}
 }
