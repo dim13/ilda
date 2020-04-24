@@ -18,7 +18,7 @@ func (p Point) normalize(r image.Rectangle) image.Point {
 	dy := 65535 / float64(r.Max.Y-r.Min.Y)
 	x := 32768 + float64(p.X)
 	y := 32767 - float64(p.Y)
-	return image.Pt(int(x/dx), int(y/dy))
+	return image.Pt(r.Min.X+int(x/dx), r.Min.Y+int(y/dy))
 }
 
 // Draw aligns r.Min in dst with sp in src and then replaces the
