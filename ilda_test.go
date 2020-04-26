@@ -1,6 +1,7 @@
 package ilda
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"testing"
@@ -45,9 +46,22 @@ func ExampleDecoder() {
 	defer fd.Close()
 	d := NewDecoder(fd)
 	for d.Next() {
-		log.Println(d.Frame())
+		f := d.Frame()
+		fmt.Println("Name", f.Name)
+		fmt.Println("Company", f.Company)
+		fmt.Println("Number", f.Number)
+		fmt.Println("Total", f.Total)
+		fmt.Println("Projector", f.Projector)
+		fmt.Println("Points", len(f.Points))
 	}
 	if err := d.Err(); err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
+	// Output:
+	// Name ILDA Tes
+	// Company t patter
+	// Number 0
+	// Total 1
+	// Projector 0
+	// Points 1191
 }
