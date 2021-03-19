@@ -4,21 +4,18 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
 func TestRead(t *testing.T) {
-	testCases := []string{
-		"testdata/ildatest.ild",
-		"testdata/ildatstb.ild",
-		"testdata/30k.ild",
-		"testdata/barney.ild",
-		"testdata/biker.ild",
-		//"testdata/theriddle.ild",
+	files, err := filepath.Glob("testdata/*.ild")
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, tc := range testCases {
-		t.Run(tc, func(t *testing.T) {
-			f, err := os.Open(tc)
+	for _, file := range files {
+		t.Run(filepath.Base(file), func(t *testing.T) {
+			f, err := os.Open(file)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -26,9 +23,11 @@ func TestRead(t *testing.T) {
 			d := NewDecoder(f)
 			for d.Next() {
 				frame := d.Frame()
-				t.Log("Frame", frame.Name, frame.Company, frame.Number, frame.Total)
-				for _, point := range frame.Points {
-					t.Log("Point", point)
+				if !testing.Short() {
+					t.Log("Frame", frame.Name, frame.Company, frame.Number, frame.Total)
+					for _, point := range frame.Points {
+						t.Log("Point", point)
+					}
 				}
 			}
 			if err := d.Err(); err != nil {
