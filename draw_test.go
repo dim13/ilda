@@ -35,8 +35,10 @@ func TestDraw(t *testing.T) {
 			pal := append(DefaultPalette, color.Black, color.Transparent)
 			r := image.Rect(0, 0, 640, 640)
 			images := make([]*image.Paletted, len(frames))
+			delays := make([]int, len(frames))
 			for i, frame := range frames {
 				images[i] = image.NewPaletted(r, pal)
+				delays[i] = 4 // 25Hz
 				frame.Draw(images[i], r, bg, image.ZP)
 			}
 
@@ -45,10 +47,7 @@ func TestDraw(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer out.Close()
-			gif.EncodeAll(out, &gif.GIF{
-				Image: images,
-				Delay: make([]int, len(images)),
-			})
+			gif.EncodeAll(out, &gif.GIF{Image: images, Delay: delays})
 		})
 	}
 }
