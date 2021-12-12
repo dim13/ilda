@@ -21,7 +21,7 @@ var magic = [4]byte{'I', 'L', 'D', 'A'}
 //  front: towards viewer, in front of screen
 //
 type Point struct {
-	X, Y, Z int
+	X, Y, Z int16
 	color.Color
 }
 
@@ -128,7 +128,7 @@ func (d *Decoder) readIndexedColor3D(n uint16) ([]Point, error) {
 	}
 	points := make([]Point, n)
 	for i, v := range frame {
-		points[i] = Point{int(v.X), int(v.Y), int(v.Z), v.Color(d.pal)}
+		points[i] = Point{v.X, v.Y, v.Z, v.Color(d.pal)}
 	}
 	return points, nil
 }
@@ -140,7 +140,7 @@ func (d *Decoder) readIndexedColor2D(n uint16) ([]Point, error) {
 	}
 	points := make([]Point, n)
 	for i, v := range frame {
-		points[i] = Point{int(v.X), int(v.Y), 0, v.Color(d.pal)}
+		points[i] = Point{v.X, v.Y, 0, v.Color(d.pal)}
 	}
 	return points, nil
 }
@@ -164,7 +164,7 @@ func (d *Decoder) readTrueColor3D(n uint16) ([]Point, error) {
 	}
 	points := make([]Point, n)
 	for i, v := range frame {
-		points[i] = Point{int(v.X), int(v.Y), int(v.Z), v.Color()}
+		points[i] = Point{v.X, v.Y, v.Z, v.Color()}
 	}
 	return points, nil
 }
@@ -176,7 +176,7 @@ func (d *Decoder) readTrueColor2D(n uint16) ([]Point, error) {
 	}
 	points := make([]Point, n)
 	for i, v := range frame {
-		points[i] = Point{int(v.X), int(v.Y), 0, v.Color()}
+		points[i] = Point{v.X, v.Y, 0, v.Color()}
 	}
 	return points, nil
 }
