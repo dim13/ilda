@@ -14,11 +14,11 @@ import (
 //  X: Extreme left: -32768, extreme right: +32767
 //  Y: Extreme bottom: -32768, extreme top: +32767
 func (p Point) normalize(r image.Rectangle) image.Point {
-	dx := 65535 / float64(r.Max.X-r.Min.X)
-	dy := 65535 / float64(r.Max.Y-r.Min.Y)
-	x := 32768 + float64(p.X)
-	y := 32767 - float64(p.Y)
-	return image.Pt(r.Min.X+int(x/dx), r.Min.Y+int(y/dy))
+	dx := 65535 / r.Dx()
+	dy := 65535 / r.Dy()
+	x := 32768 + int(p.X)
+	y := 32767 - int(p.Y)
+	return r.Min.Add(image.Pt(x/dx, y/dy))
 }
 
 // Draw aligns r.Min in dst with sp in src and then replaces the
