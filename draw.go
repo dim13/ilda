@@ -7,12 +7,14 @@ import (
 )
 
 // A Point is an X, Y coordinate pair. The axes increase right and down.
-//  X: Extreme left: 0, extreme right Inf
-//  Y: Extreme top: 0, extreme bottom Inf
+//
+//	X: Extreme left: 0, extreme right Inf
+//	Y: Extreme top: 0, extreme bottom Inf
 //
 // ILDA Point
-//  X: Extreme left: -32768, extreme right: +32767
-//  Y: Extreme bottom: -32768, extreme top: +32767
+//
+//	X: Extreme left: -32768, extreme right: +32767
+//	Y: Extreme bottom: -32768, extreme top: +32767
 func (p Point) normalize(r image.Rectangle) image.Point {
 	dx := 65535 / r.Dx()
 	dy := 65535 / r.Dy()

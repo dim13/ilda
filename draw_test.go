@@ -39,7 +39,7 @@ func TestDraw(t *testing.T) {
 			for i, frame := range frames {
 				images[i] = image.NewPaletted(r, pal)
 				delays[i] = 4 // 25Hz
-				frame.Draw(images[i], r, bg, image.ZP)
+				frame.Draw(images[i], r, bg, image.Point{})
 			}
 
 			out, err := os.Create(strings.TrimSuffix(file, filepath.Ext(file)) + ".gif")

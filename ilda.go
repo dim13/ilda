@@ -14,12 +14,11 @@ var magic = [4]byte{'I', 'L', 'D', 'A'}
 
 // Point coordinate
 //
-//  X: Extreme left: -32768, extreme right: +32767
-//  Y: Extreme bottom: -32768, extreme top: +32767
-//  Z: Extreme rear: -32768, extreme front: +32767
-//  rear: away from viewer, behind screen
-//  front: towards viewer, in front of screen
-//
+//	X: Extreme left: -32768, extreme right: +32767
+//	Y: Extreme bottom: -32768, extreme top: +32767
+//	Z: Extreme rear: -32768, extreme front: +32767
+//	rear: away from viewer, behind screen
+//	front: towards viewer, in front of screen
 type Point struct {
 	X, Y, Z int16
 	color.Color
