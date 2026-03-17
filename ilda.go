@@ -69,8 +69,8 @@ func (d *Decoder) Frame() Frame {
 		return Frame{}
 	}
 	frame := Frame{
-		Name:      trimZero(hdr.FrameName[:]),
-		Company:   trimZero(hdr.CompanyName[:]),
+		Name:      string(bytes.TrimRight(hdr.FrameName[:], "\x00")),
+		Company:   string(bytes.TrimRight(hdr.CompanyName[:], "\x00")),
 		Number:    int(hdr.FrameNumber),
 		Total:     int(hdr.TotalFrames),
 		Projector: int(hdr.ProjectorNumber),
@@ -99,14 +99,6 @@ func (d *Decoder) Frame() Frame {
 		return d.Frame()
 	}
 	return frame
-}
-
-func trimZero(b []byte) string {
-	n := bytes.IndexByte(b, 0)
-	if n < 0 {
-		n = len(b)
-	}
-	return string(b[:n])
 }
 
 func (d *Decoder) readFrameHeader() (frameHeader, error) {
