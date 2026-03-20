@@ -1,12 +1,21 @@
 package ilda
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+var testAntimations bool
+
+func TestMain(m *testing.M) {
+	flag.BoolVar(&testAntimations, "ani", false, "test animations")
+	flag.Parse()
+	os.Exit(m.Run())
+}
 
 func TestRead(t *testing.T) {
 	files, err := filepath.Glob("testdata/*.ild")

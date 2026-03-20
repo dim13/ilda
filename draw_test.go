@@ -27,7 +27,7 @@ func TestDraw(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if testing.Short() && len(frames) > 1 {
+			if len(frames) > 1 && !testAntimations {
 				t.Skip("skip animation")
 			}
 
