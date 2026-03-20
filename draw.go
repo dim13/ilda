@@ -37,6 +37,10 @@ func (f *Frame) Draw(dst draw.Image, r image.Rectangle, src image.Image, sp imag
 type plot image.Point
 
 func (m *plot) drawTo(dst draw.Image, p image.Point, c color.Color) {
+	if c == color.Transparent {
+		m.X, m.Y = p.X, p.Y // move to
+		return
+	}
 	dx := p.X - m.X
 	if dx < 0 {
 		dx = -dx
@@ -55,9 +59,7 @@ func (m *plot) drawTo(dst draw.Image, p image.Point, c color.Color) {
 	}
 	err := dx + dy // error value e_xy
 	for {
-		if c != color.Transparent {
-			dst.Set(m.X, m.Y, c)
-		}
+		dst.Set(m.X, m.Y, c)
 		if m.X == p.X && m.Y == p.Y {
 			break
 		}
