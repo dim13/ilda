@@ -8,19 +8,20 @@ import (
 
 // A Point is an X, Y coordinate pair. The axes increase right and down.
 //
-//	X: Extreme left: 0, extreme right Inf
-//	Y: Extreme top: 0, extreme bottom Inf
+//	X: Extreme left: 0, extreme right max.X
+//	Y: Extreme top: 0, extreme bottom max.Y
 //
 // ILDA Point
 //
 //	X: Extreme left: -32768, extreme right: +32767
 //	Y: Extreme bottom: -32768, extreme top: +32767
-func (p Point) normalize(r image.Rectangle) image.Point {
-	dx := 65535 / r.Dx()
-	dy := 65535 / r.Dy()
-	x := 32768 + int(p.X)
-	y := 32767 - int(p.Y)
-	return r.Min.Add(image.Pt(x/dx, y/dy))
+//
+//	[-32768, +32767] -> [min.X, min.Y] (0, 0)
+//	[+32767, -32768] -> [max.X, max.Y] (65535, 65535)
+func (p Point) Point(r image.Rectangle) image.Point {
+	pp := image.Pt(int(p.X), -int(p.Y)).Add(image.Pt(0x8000, 0x8000))
+	pp.X, pp.Y = pp.X*r.Dx(), pp.Y*r.Dy()
+	return pp.Div(0x10000).Add(image.Pt(1, -1))
 }
 
 // Draw aligns r.Min in dst with sp in src and then replaces the
@@ -30,47 +31,49 @@ func (f *Frame) Draw(dst draw.Image, r image.Rectangle, src image.Image, sp imag
 	draw.Draw(dst, r, src, sp, draw.Src)
 	var plt plot
 	for _, pt := range f.Points {
-		plt.drawTo(dst, pt.normalize(r), pt.Color)
+		switch pt.Color {
+		case color.Transparent:
+			plt.move(pt.Point(r))
+		default:
+			plt.draw(dst, pt.Point(r), pt.Color)
+		}
 	}
 }
 
 type plot image.Point
 
-func (m *plot) drawTo(dst draw.Image, p image.Point, c color.Color) {
-	if c == color.Transparent {
-		m.X, m.Y = p.X, p.Y // move to
-		return
+func (p0 *plot) move(p1 image.Point) {
+	p0.X, p0.Y = p1.X, p1.Y
+}
+
+func abs(x int) (int, int) {
+	if x < 0 {
+		return -x, -1
 	}
-	dx := p.X - m.X
-	if dx < 0 {
-		dx = -dx
-	}
-	sx := -1
-	if m.X < p.X {
-		sx = 1
-	}
-	dy := m.Y - p.Y
-	if dy > 0 {
-		dy = -dy
-	}
-	sy := -1
-	if m.Y < p.Y {
-		sy = 1
-	}
+	return x, 1
+}
+
+func (p0 *plot) draw(img draw.Image, p1 image.Point, c color.Color) {
+	dx, sx := abs(p1.X - p0.X)
+	dy, sy := abs(p1.Y - p0.Y)
+	dy = -dy
 	err := dx + dy // error value e_xy
 	for {
-		dst.Set(m.X, m.Y, c)
-		if m.X == p.X && m.Y == p.Y {
-			break
-		}
+		img.Set(p0.X, p0.Y, c)
 		e2 := 2 * err
 		if e2 >= dy { // e_xy + e_x > 0
+			if p0.X == p1.X {
+				break
+			}
 			err += dy
-			m.X += sx
+			p0.X += sx
 		}
 		if e2 <= dx { // e_xy + e_y < 0
+			if p0.Y == p1.Y {
+				break
+			}
 			err += dx
-			m.Y += sy
+			p0.Y += sy
 		}
 	}
 }
