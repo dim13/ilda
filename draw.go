@@ -40,6 +40,14 @@ func (f *Frame) Draw(dst draw.Image, r image.Rectangle, src image.Image, sp imag
 	}
 }
 
+// DrawServo renders like Draw, but first tracks the frame's points with a
+// simulated galvo pair (x, y) at the given scan rate (points per second), so
+// corners show realistic overshoot and settling instead of instant jumps.
+func (f *Frame) DrawServo(dst draw.Image, r image.Rectangle, src image.Image, sp image.Point, pps float64, x, y *Servo) {
+	moved := f.Move(pps, x, y)
+	moved.Draw(dst, r, src, sp)
+}
+
 type plot image.Point
 
 func (p0 *plot) move(p1 image.Point) {

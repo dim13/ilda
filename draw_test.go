@@ -36,10 +36,12 @@ func TestDraw(t *testing.T) {
 			r := image.Rect(0, 0, 640, 640)
 			images := make([]*image.Paletted, len(frames))
 			delays := make([]int, len(frames))
+			const pps = 30000 // typical ILDA scan rate
+			x, y := DefaultServo(), DefaultServo()
 			for i, frame := range frames {
 				images[i] = image.NewPaletted(r, pal)
 				delays[i] = 4 // 25Hz
-				frame.Draw(images[i], r, bg, image.Point{})
+				frame.DrawServo(images[i], r, bg, image.Point{}, pps, x, y)
 			}
 
 			out, err := os.Create(strings.TrimSuffix(file, filepath.Ext(file)) + ".gif")
